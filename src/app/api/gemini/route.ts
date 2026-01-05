@@ -16,8 +16,8 @@ const promptTemplate = (inputs: string = '') => {
         Return ONLY a valid raw JSON, without triple backticks, without language tags, without extra text.
         
         Generate a number of MCQs based on the content size:
-        - At least 7 questions minimum
-        - Up to 25 questions maximum
+        - At least 5 questions minimum
+        - Up to 6 questions maximum
         - Adjust the number based on content length (more content = more questions)
         - If the provided documents don't contain enough information to create good questions, use your knowledge to supplement with relevant information
 
@@ -145,7 +145,7 @@ export async function POST(req: Request) {
     }
 
     const genAI = new GoogleGenerativeAI(geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5' });
 
     const result = await model.generateContent(promptTemplate(combinedText));
     let output = result.response.text().trim();
