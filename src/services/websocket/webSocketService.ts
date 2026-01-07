@@ -151,7 +151,8 @@ export class WebSocketService {
       });
 
       // Wait a bit more to ensure subscription is fully ready on server side
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      // Increased delay for production environments with higher latency
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       return this.subscription;
     } catch (error) {

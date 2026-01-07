@@ -141,18 +141,35 @@ const Chat: React.FC<ChatProps> = ({
       });
     }
 
-    // Filter pending messages - remove if real message with same ID exists
+    // Filter pending messages - remove if real message with similar content exists
     const pendingWithoutDuplicates = pendingMessages.filter((pending) => {
-      // If pending message has SUCCESS status and real message exists, remove pending
+      // Only check SUCCESS pending messages for duplicates
       if (pending.status === "SUCCESS") {
-        const hasRealMessage = combinedMessages.some(
-          (msg) =>
-            msg.id === pending.id || // Match by real ID
-            (pending.tempId && msg.tempId === pending.tempId) // Match by tempId
-        );
+        // Check if a real message exists with:
+        // 1. Same ID (exact match)
+        // 2. Same content + same sender (fuzzy match for WebSocket messages)
+        const hasRealMessage = combinedMessages.some((msg) => {
+          // Exact ID match
+          if (msg.id === pending.id) return true;
+
+          // Fuzzy match: same content, same sender, created within 10 seconds
+          if (
+            msg.content === pending.content &&
+            msg.senderId === pending.senderId &&
+            msg.type === pending.type
+          ) {
+            const msgTime = new Date(msg.createdAt).getTime();
+            const pendingTime = new Date(pending.createdAt).getTime();
+            const timeDiff = Math.abs(msgTime - pendingTime);
+            // Allow 10 seconds difference to account for clock skew
+            return timeDiff < 10000;
+          }
+
+          return false;
+        });
         return !hasRealMessage;
       }
-      // Keep pending/error messages
+      // Keep PENDING/ERROR messages
       return true;
     });
 
