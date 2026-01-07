@@ -141,37 +141,9 @@ const Chat: React.FC<ChatProps> = ({
       });
     }
 
-    // Filter pending messages - remove if real message with similar content exists
-    const pendingWithoutDuplicates = pendingMessages.filter((pending) => {
-      // Only check SUCCESS pending messages for duplicates
-      if (pending.status === "SUCCESS") {
-        // Check if a real message exists with:
-        // 1. Same ID (exact match)
-        // 2. Same content + same sender (fuzzy match for WebSocket messages)
-        const hasRealMessage = combinedMessages.some((msg) => {
-          // Exact ID match
-          if (msg.id === pending.id) return true;
-
-          // Fuzzy match: same content, same sender, created within 10 seconds
-          if (
-            msg.content === pending.content &&
-            msg.senderId === pending.senderId &&
-            msg.type === pending.type
-          ) {
-            const msgTime = new Date(msg.createdAt).getTime();
-            const pendingTime = new Date(pending.createdAt).getTime();
-            const timeDiff = Math.abs(msgTime - pendingTime);
-            // Allow 10 seconds difference to account for clock skew
-            return timeDiff < 10000;
-          }
-
-          return false;
-        });
-        return !hasRealMessage;
-      }
-      // Keep PENDING/ERROR messages
-      return true;
-    });
+    const pendingWithoutDuplicates = pendingMessages.filter(
+      (pending) => !combinedMessages.some((msg) => msg.id === pending.id)
+    );
 
     // Filter out locally deleted messages
     const allCombined = [
@@ -277,54 +249,16 @@ const Chat: React.FC<ChatProps> = ({
     if (!messageText.trim()) return;
 
     const contentToSend = convertEmojiToText(messageText.trim());
-    const tempId = uuidv4();
-    const tempTimestamp = new Date().toISOString();
-
-    // Optimistic update: Add message to UI immediately
-    const optimisticMessage: ChatMessage = {
-      id: tempId,
-      tempId: tempId,
-      courseId: courseId,
-      content: contentToSend,
-      type: "TEXT",
-      senderId: currentUserId,
-      senderName: session.user.name || "You",
-      senderThumbnailUrl: session.user.thumbnailUrl || undefined,
-      senderRole: "STUDENT", // Default to STUDENT for optimistic update
-      createdAt: tempTimestamp,
-      status: "PENDING",
-    };
-
-    setPendingMessages((prev) => [...prev, optimisticMessage]);
-    setShouldScrollToBottom(true);
-    setMessageText("");
-    setShowEmojiPicker(false);
 
     try {
-      const response = await sendMessage({
+      await sendMessage({
         courseId,
         content: contentToSend,
         type: "TEXT",
-        tempId: tempId,
+        tempId: uuidv4(),
       }).unwrap();
-
-      // Update pending message with real ID from server
-      // This allows the duplicate filter to match it with incoming WebSocket message
-      setPendingMessages((prev) =>
-        prev.map((msg) =>
-          msg.tempId === tempId
-            ? {
-                ...msg,
-                id: response.data.id, // Update with real ID from server
-                tempId: tempId, // Keep tempId for tracking
-                status: "SUCCESS",
-              }
-            : msg
-        )
-      );
-
-      // Don't remove immediately - let WebSocket message arrival trigger the cleanup
-      // The duplicate filter will automatically remove pending message when WS message arrives
+      setMessageText("");
+      setShowEmojiPicker(false);
 
       if (textareaRef.current) {
         setTimeout(() => {
@@ -338,12 +272,6 @@ const Chat: React.FC<ChatProps> = ({
         }, 0);
       }
     } catch (error) {
-      // Mark message as error
-      setPendingMessages((prev) =>
-        prev.map((msg) =>
-          msg.tempId === tempId ? { ...msg, status: "ERROR" } : msg
-        )
-      );
       toast.error("Failed to send message. Please try again.");
     }
   };
