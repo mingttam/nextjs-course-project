@@ -141,14 +141,22 @@ const Chat: React.FC<ChatProps> = ({
       });
     }
 
-    const pendingWithoutDuplicates = pendingMessages.filter(
-      (pending) => !combinedMessages.some((msg) => msg.id === pending.id)
-    );
+    // Filter pending messages - remove if real message with same ID or tempId exists
+    const pendingWithoutDuplicates = pendingMessages.filter((pending) => {
+      const hasSameId = combinedMessages.some(
+        (msg) => msg.id === pending.id || msg.id === pending.tempId
+      );
+      const hasSameTempId =
+        pending.tempId &&
+        combinedMessages.some((msg) => msg.tempId === pending.tempId);
+      return !hasSameId && !hasSameTempId;
+    });
 
     // Filter out locally deleted messages
-    const allCombined = [...combinedMessages, ...pendingWithoutDuplicates].filter(
-      (msg) => !deletedMessages.has(msg.id)
-    );
+    const allCombined = [
+      ...combinedMessages,
+      ...pendingWithoutDuplicates,
+    ].filter((msg) => !deletedMessages.has(msg.id));
 
     return allCombined.sort(
       (a, b) =>
@@ -177,10 +185,10 @@ const Chat: React.FC<ChatProps> = ({
   useEffect(() => {
     resetMessages();
     setIsInitializing(true);
-    
+
     // Clear deleted messages when switching courses
     setDeletedMessages(new Set());
-    
+
     const timer = setTimeout(() => setIsInitializing(false), 300);
     return () => clearTimeout(timer);
   }, [courseId, resetMessages]);
@@ -248,16 +256,52 @@ const Chat: React.FC<ChatProps> = ({
     if (!messageText.trim()) return;
 
     const contentToSend = convertEmojiToText(messageText.trim());
+    const tempId = uuidv4();
+    const tempTimestamp = new Date().toISOString();
+
+    // Optimistic update: Add message to UI immediately
+    const optimisticMessage: ChatMessage = {
+      id: tempId,
+      tempId: tempId,
+      courseId: courseId,
+      content: contentToSend,
+      type: "TEXT",
+      senderId: currentUserId,
+      senderName: session.user.name || "You",
+      senderThumbnailUrl: session.user.thumbnailUrl || undefined,
+      senderRole: "STUDENT", // Default to STUDENT for optimistic update
+      createdAt: tempTimestamp,
+      status: "PENDING",
+    };
+
+    setPendingMessages((prev) => [...prev, optimisticMessage]);
+    setShouldScrollToBottom(true);
+    setMessageText("");
+    setShowEmojiPicker(false);
 
     try {
-      await sendMessage({
+      const response = await sendMessage({
         courseId,
         content: contentToSend,
         type: "TEXT",
-        tempId: uuidv4(),
+        tempId: tempId,
       }).unwrap();
-      setMessageText("");
-      setShowEmojiPicker(false);
+
+      // Update pending message with successful status
+      setPendingMessages((prev) =>
+        prev.map((msg) =>
+          msg.tempId === tempId
+            ? { ...msg, ...response.data, status: "SUCCESS" }
+            : msg
+        )
+      );
+
+      // Remove from pending after a short delay (will be replaced by WS message)
+      setTimeout(() => {
+        setPendingMessages((prev) =>
+          prev.filter((msg) => msg.tempId !== tempId)
+        );
+      }, 1000);
 
       if (textareaRef.current) {
         setTimeout(() => {
@@ -271,6 +315,12 @@ const Chat: React.FC<ChatProps> = ({
         }, 0);
       }
     } catch (error) {
+      // Mark message as error
+      setPendingMessages((prev) =>
+        prev.map((msg) =>
+          msg.tempId === tempId ? { ...msg, status: "ERROR" } : msg
+        )
+      );
       toast.error("Failed to send message. Please try again.");
     }
   };
@@ -307,14 +357,14 @@ const Chat: React.FC<ChatProps> = ({
     try {
       // First make the API call, only remove from UI if it succeeds
       await deleteMessage({ courseId, messageId }).unwrap();
-      
+
       // API call succeeded, now remove from both UI sources
       removeMessage(messageId); // Remove from infinite scroll messages
       removeWSMessage(messageId); // Remove from WebSocket messages
-      
+
       // Add to deleted messages set to prevent reappearing
       setDeletedMessages((prev) => new Set(prev).add(messageId));
-      
+
       // Clean up deleting state
       setDeletingMessages((prev) => {
         const newSet = new Set(prev);
@@ -323,7 +373,7 @@ const Chat: React.FC<ChatProps> = ({
       });
     } catch (error) {
       toast.error("Failed to delete message. Please try again.");
-      
+
       // API call failed, keep message in UI and clean up deleting state
       setDeletingMessages((prev) => {
         const newSet = new Set(prev);

@@ -97,7 +97,7 @@ export class WebSocketService {
   /**
    * Subscribe to course messages
    */
-  private async subscribeToMessages(courseId: string) {
+  private async subscribeToMessages(courseId: string): Promise<any> {
     if (!this.client) {
       toast.error("WebSocket client not initialized");
       return;
@@ -150,6 +150,9 @@ export class WebSocketService {
         }
       });
 
+      // Wait a bit more to ensure subscription is fully ready on server side
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
       return this.subscription;
     } catch (error) {
       toast.error("Error subscribing to messages. Please try again.");
@@ -170,9 +173,9 @@ export class WebSocketService {
   /**
    * Subscribe to a different course
    */
-  subscribeToCourse(courseId: string) {
+  async subscribeToCourse(courseId: string) {
     this.unsubscribe();
-    this.subscribeToMessages(courseId);
+    await this.subscribeToMessages(courseId);
     if (this.config) {
       this.config.courseId = courseId;
     }

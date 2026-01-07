@@ -50,7 +50,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
       // Ensure we're working with local timezone
       const date = new Date(dateString);
       const now = new Date();
-      
+
       // Calculate difference in milliseconds considering timezone offset
       const diffInMs = now.getTime() - date.getTime();
       const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
