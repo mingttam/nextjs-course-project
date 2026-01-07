@@ -1,6 +1,6 @@
-import { geminiApi } from './../../../services/quiz/geminiApi';
-import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { geminiApi } from "./../../../services/quiz/geminiApi";
+import { NextResponse } from "next/server";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const CHARS_PER_TOKEN = 4; // Gemini averages ~4 chars per token
 const MAX_TOKEN_LIMIT = 1000000; // 1 million token limit for Gemini 2.0 Flash
@@ -10,7 +10,7 @@ function estimateTokens(text: string): number {
   return Math.ceil(text.length / CHARS_PER_TOKEN);
 }
 
-const promptTemplate = (inputs: string = '') => {
+const promptTemplate = (inputs: string = "") => {
   return `
         You are an expert educational content creator who generates high-quality multiple-choice questions (MCQs) from provided text.
         Return ONLY a valid raw JSON, without triple backticks, without language tags, without extra text.
@@ -86,16 +86,16 @@ export async function POST(req: Request) {
 
     if (!texts || !Array.isArray(texts) || texts.length === 0) {
       return NextResponse.json(
-        { error: 'Missing or invalid texts array' },
+        { error: "Missing or invalid texts array" },
         { status: 400 }
       );
     }
 
     if (
-      !texts.every((text) => typeof text === 'string' && text.trim().length > 0)
+      !texts.every((text) => typeof text === "string" && text.trim().length > 0)
     ) {
       return NextResponse.json(
-        { error: 'All texts must be non-empty strings' },
+        { error: "All texts must be non-empty strings" },
         { status: 400 }
       );
     }
@@ -109,7 +109,7 @@ export async function POST(req: Request) {
 
     // Add token for document separators
     const separatorTokens =
-      estimateTokens('\n\n--- NEW DOCUMENT ---\n\n') * (texts.length - 1);
+      estimateTokens("\n\n--- NEW DOCUMENT ---\n\n") * (texts.length - 1);
 
     // Estimate tokens for prompt template
     const promptTokens = estimateTokens(promptTemplate());
@@ -133,25 +133,53 @@ export async function POST(req: Request) {
     }
 
     // Combine all texts with clear separation between documents
-    const documentSeparator = '\n\n--- NEW DOCUMENT ---\n\n';
+    const documentSeparator = "\n\n--- NEW DOCUMENT ---\n\n";
     const combinedText = texts.join(documentSeparator);
 
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) {
       return NextResponse.json(
-        { error: 'Gemini API key is missing' },
+        { error: "Gemini API key is missing" },
         { status: 500 }
       );
     }
 
     const genAI = new GoogleGenerativeAI(geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    const result = await model.generateContent(promptTemplate(combinedText));
-    let output = result.response.text().trim();
+    let output = "";
+
+    try {
+      const result = await model.generateContent(promptTemplate(combinedText));
+      output = result.response.text().trim();
+    } catch (err: any) {
+      console.error("Gemini generateContent error:", err);
+
+      // QUOTA HẾT
+      if (err.status === 429) {
+        return NextResponse.json(
+          { error: "Gemini quota exceeded (free tier hết)" },
+          { status: 429 }
+        );
+      }
+
+      // MODEL SAI / KHÔNG HỖ TRỢ
+      if (err.status === 404) {
+        return NextResponse.json(
+          {
+            error:
+              "Gemini model không tồn tại hoặc không hỗ trợ generateContent",
+          },
+          { status: 400 }
+        );
+      }
+
+      // LỖI KHÁC
+      return NextResponse.json({ error: "Gemini API failed" }, { status: 500 });
+    }
 
     // Remove any triple backticks or language tags if present
-    output = output.replace(/```(?:json)?/g, '').trim();
+    output = output.replace(/```(?:json)?/g, "").trim();
 
     try {
       const parsed = JSON.parse(output);
@@ -161,16 +189,16 @@ export async function POST(req: Request) {
       // }
       return NextResponse.json({ mcqs: parsed.questions || [] });
     } catch (err) {
-      console.error('Failed to parse Gemini output:', err, output);
+      console.error("Failed to parse Gemini output:", err, output);
       return NextResponse.json(
-        { error: 'Invalid JSON from Gemini' },
+        { error: "Invalid JSON from Gemini" },
         { status: 500 }
       );
     }
   } catch (error) {
-    console.error('API error:', error);
+    console.error("API error:", error);
     return NextResponse.json(
-      { error: 'Something went wrong' },
+      { error: "Something went wrong" },
       { status: 500 }
     );
   }
