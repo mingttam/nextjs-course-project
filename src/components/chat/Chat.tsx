@@ -141,15 +141,19 @@ const Chat: React.FC<ChatProps> = ({
       });
     }
 
-    // Filter pending messages - remove if real message with same ID or tempId exists
+    // Filter pending messages - remove if real message with same ID exists
     const pendingWithoutDuplicates = pendingMessages.filter((pending) => {
-      const hasSameId = combinedMessages.some(
-        (msg) => msg.id === pending.id || msg.id === pending.tempId
-      );
-      const hasSameTempId =
-        pending.tempId &&
-        combinedMessages.some((msg) => msg.tempId === pending.tempId);
-      return !hasSameId && !hasSameTempId;
+      // If pending message has SUCCESS status and real message exists, remove pending
+      if (pending.status === "SUCCESS") {
+        const hasRealMessage = combinedMessages.some(
+          (msg) =>
+            msg.id === pending.id || // Match by real ID
+            (pending.tempId && msg.tempId === pending.tempId) // Match by tempId
+        );
+        return !hasRealMessage;
+      }
+      // Keep pending/error messages
+      return true;
     });
 
     // Filter out locally deleted messages
@@ -287,21 +291,23 @@ const Chat: React.FC<ChatProps> = ({
         tempId: tempId,
       }).unwrap();
 
-      // Update pending message with successful status
+      // Update pending message with real ID from server
+      // This allows the duplicate filter to match it with incoming WebSocket message
       setPendingMessages((prev) =>
         prev.map((msg) =>
           msg.tempId === tempId
-            ? { ...msg, ...response.data, status: "SUCCESS" }
+            ? {
+                ...msg,
+                id: response.data.id, // Update with real ID from server
+                tempId: tempId, // Keep tempId for tracking
+                status: "SUCCESS",
+              }
             : msg
         )
       );
 
-      // Remove from pending after a short delay (will be replaced by WS message)
-      setTimeout(() => {
-        setPendingMessages((prev) =>
-          prev.filter((msg) => msg.tempId !== tempId)
-        );
-      }, 1000);
+      // Don't remove immediately - let WebSocket message arrival trigger the cleanup
+      // The duplicate filter will automatically remove pending message when WS message arrives
 
       if (textareaRef.current) {
         setTimeout(() => {
