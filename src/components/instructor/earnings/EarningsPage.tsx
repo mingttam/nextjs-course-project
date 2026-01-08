@@ -1,30 +1,30 @@
-import { useState, useEffect } from 'react';
-import { format } from 'date-fns';
+import { useState, useEffect } from "react";
+import { format } from "date-fns";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Label } from '@/components/ui/label';
-import EarningsPageSkeleton from './EarningsPageSkeleton';
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import EarningsPageSkeleton from "./EarningsPageSkeleton";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { DollarSign, Wallet, BookOpen } from 'lucide-react';
-import { useGetInsEarningsQuery } from '@/services/instructor/earnings/earnings-ins-api';
-import { InsEarningsDetail } from '@/types/instructor/earnings';
-import { ErrorComponent } from '../commom/ErrorComponent';
-import { Pagination } from '@/components/common/Pagination';
-import { toast } from 'sonner';
+} from "@/components/ui/select";
+import { DollarSign, Wallet, BookOpen } from "lucide-react";
+import { useGetInsEarningsQuery } from "@/services/instructor/earnings/earnings-ins-api";
+import { InsEarningsDetail } from "@/types/instructor/earnings";
+import { ErrorComponent } from "../commom/ErrorComponent";
+import { Pagination } from "@/components/common/Pagination";
+import { toast } from "sonner";
 
 interface DateRange {
   from?: Date;
@@ -33,16 +33,16 @@ interface DateRange {
 
 // Format currency helper function
 const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
   }).format(amount);
 };
 
 export const EarningsPage = () => {
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(10);
-  const [sort, setSort] = useState('paidAt,desc');
+  const [sort, setSort] = useState("paidAt,desc");
   const [courses, setCourses] = useState<Set<{ id: string; title: string }>>(
     new Set()
   );
@@ -98,14 +98,14 @@ export const EarningsPage = () => {
       status = status.toUpperCase();
     }
     switch (status) {
-      case 'PAID':
-        return 'bg-emerald-600 text-white font-medium';
-      case 'PENDING':
-        return 'bg-warning text-warning-foreground';
-      case 'AVAILABLE':
-        return 'bg-blue-500 text-white';
+      case "PAID":
+        return "bg-emerald-600 text-white font-medium";
+      case "PENDING":
+        return "bg-warning text-warning-foreground";
+      case "AVAILABLE":
+        return "bg-blue-500 text-white";
       default:
-        return 'bg-secondary text-secondary-foreground';
+        return "bg-secondary text-secondary-foreground";
     }
   };
 
@@ -134,7 +134,7 @@ export const EarningsPage = () => {
         {data && !isLoading && !isError && (
           <>
             {/* Stats Cards */}
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {/* Total Earnings */}
               <Card className="shadow-card">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -202,9 +202,9 @@ export const EarningsPage = () => {
                     <div className="col-span-2 space-y-2">
                       <Label>Course</Label>
                       <Select
-                        value={courseId ? courseId : 'all'}
+                        value={courseId ? courseId : "all"}
                         onValueChange={(value) =>
-                          setCourseId(value !== 'all' ? value : undefined)
+                          setCourseId(value !== "all" ? value : undefined)
                         }
                       >
                         <SelectTrigger>
@@ -228,8 +228,8 @@ export const EarningsPage = () => {
                         type="date"
                         value={
                           dateRange?.from
-                            ? format(dateRange.from, 'yyyy-MM-dd')
-                            : ''
+                            ? format(dateRange.from, "yyyy-MM-dd")
+                            : ""
                         }
                         onChange={(e) => {
                           // Check if from date is after to date
@@ -262,8 +262,8 @@ export const EarningsPage = () => {
                         type="date"
                         value={
                           dateRange?.to
-                            ? format(dateRange.to, 'yyyy-MM-dd')
-                            : ''
+                            ? format(dateRange.to, "yyyy-MM-dd")
+                            : ""
                         }
                         onChange={(e) => {
                           // Check if to date is after from date
@@ -324,7 +324,7 @@ export const EarningsPage = () => {
                         onClick={() => {
                           setCourseId(undefined);
                           setDateRange(undefined);
-                          setSort('paidAt,desc');
+                          setSort("paidAt,desc");
                         }}
                       >
                         Clear Filters
@@ -439,7 +439,7 @@ export const EarningsPage = () => {
                               <td className="px-4 py-4 text-right text-muted-foreground">
                                 {format(
                                   new Date(earning.paidAt),
-                                  'MMM d, yyyy'
+                                  "MMM d, yyyy"
                                 )}
                               </td>
                             </tr>
