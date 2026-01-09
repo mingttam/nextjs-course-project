@@ -206,9 +206,16 @@ export function PaymentTableRow({ payment }: PaymentTableRowProps) {
                           Transaction ID
                         </span>
                       </div>
-                      <p className="text-sm text-gray-900 font-mono break-all">
-                        {paymentDetail.transactionId || "N/A"}
-                      </p>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <p className="text-sm text-gray-900 font-mono overflow-hidden text-ellipsis">
+                            {paymentDetail.transactionId}
+                          </p>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {paymentDetail.transactionId}
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
 
                     {/* Stripe Session ID */}

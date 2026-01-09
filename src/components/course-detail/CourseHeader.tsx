@@ -165,13 +165,6 @@ export function CourseHeader({
               }}
             />
 
-            {/* Play Button Overlay - Always show for preview */}
-            <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300 cursor-pointer">
-              <div className="bg-white/90 backdrop-blur-sm rounded-full p-4 transform scale-90 hover:scale-100 transition-transform duration-300 shadow-lg">
-                <Play className="w-8 h-8 text-blue-600" />
-              </div>
-            </div>
-
             {/* Level Badge */}
             <div className="absolute top-4 left-4">
               <Badge className={getLevelBadgeColor(course.level)}>
